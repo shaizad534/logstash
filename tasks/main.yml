@@ -1,0 +1,64 @@
+---
+# tasks file for ali.logstash
+
+- name: Add Elasticsearch GPG key.
+  rpm_key:
+    key: https://packages.elastic.co/GPG-KEY-elasticsearch
+    state: present
+
+- name: Add Elasticsearch repository.
+  copy:
+    src: elasticsearch.repo
+    dest: /etc/yum.repos.d/elasticsearch.repo
+    mode: 0644
+
+- name: installing Required packages
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - java-1.8*
+    - logstash
+
+- name: Enabling services
+  service:
+    name: logstash
+    enabled: yes
+
+- name: Running services
+  service:
+    name: logstash
+    state: started
+
+- name: stoping firewalld
+  firewalld:
+    state: disabled
+
+- name: Disabling selinux
+  selinux:
+    policy: targeted
+    state: permissive
+
+- name: Adding logstash filterfile.
+  copy:
+    src: web.conf
+    dest: /etc/logstash/conf.d/web.conf
+    mode: 0644
+
+- name: Restarting logstash 
+  service: 
+    name: logstash
+    state: restarted
+
+- name: Replacing elasticsearch ip in config file
+  lineinfile:
+    path: /etc/logstash/conf.d/web.conf
+    state: present
+    regexp: '^elasticsearch { hosts => ["localhost:9200"] }\s'
+    line: 'elasticsearch { hosts => ["192.168.56.104:9200"] }'
+
+- name: Restarting services
+  service:
+    name: logstash
+    state: restarted
+
